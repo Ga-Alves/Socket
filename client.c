@@ -11,7 +11,14 @@
 void DieWithUserMessage(const char *msg, const char *detail);
 void DieWithSystemMessage(const char *msg);
 
+struct action {
+    int type;
+    int coordinates[2];
+    int board[4][4];
+};
+
 void HandleTCPServer(int clntSock);
+void printBoard(struct action message);
 
 int main(int argc, char const *argv[])
 {
@@ -69,18 +76,26 @@ perror(msg);
 exit(1);
 }
 void HandleTCPServer(int clntSock){
-    struct action {
-        int type;
-        int coordinates[2];
-        int board[4][4];
-    };
-    struct action serverResponse;
-    memset(&serverResponse, 0, sizeof serverResponse);
     int BUFSIZE = sizeof(struct action);
+    struct action message;
+    memset(&message, 0, sizeof message);
 
-    ssize_t numBytesRcvd = recv(clntSock, &serverResponse, BUFSIZE, 0);
-    if (numBytesRcvd < 0)
-        DieWithSystemMessage("recv() failed");
+    // init game
+    message.type = 0;
+    ssize_t numBytesSent = send(clntSock, &message, sizeof(message), 0);
+    if (numBytesSent < 0)
+        DieWithSystemMessage("send() failed");
 
-    printf("Resposta do servidor eh: %d\n", serverResponse.type);
+    do{
+        ssize_t numBytesRcvd = recv(clntSock, &message, BUFSIZE, 0);
+        if (numBytesRcvd < 0)
+            DieWithSystemMessage("recv() failed");
+        
+        printBoard(message);
+    }while(0);
+}
+void printBoard(struct action message){
+    for (int i = 0; i < 4; i++){
+        printf("%d, %d, %d, %d\n", message.board[i][0], message.board[i][1], message.board[i][2], message.board[i][3] );
+    };
 }

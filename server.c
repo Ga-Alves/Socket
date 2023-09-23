@@ -8,10 +8,18 @@
 
 #define MAXPENDING 1
 
+struct action {
+    int type;
+    int coordinates[2];
+    int board[4][4];
+};
 
 void DieWithUserMessage(const char *msg, const char *detail);
 void DieWithSystemMessage(const char *msg);
-void HandleTCPClient(int clntSock);
+
+
+void HandleTCPClient(int clntSock, const char* gamePath);
+int initGameBoard(struct action *serverGameBoard, const char* gamePath);
 
 // ./server v4 51511 -i input/jogo.txt
 int main(int argc, char const *argv[])
@@ -63,7 +71,7 @@ int main(int argc, char const *argv[])
         puts("Unable to get client address");
 
 
-    HandleTCPClient(clntSock);
+    HandleTCPClient(clntSock, argv[4]);
     return 0;
 }
 
@@ -81,28 +89,73 @@ perror(msg);
 exit(1);
 }
 
-void HandleTCPClient(int clntSock){
-    struct action {
-        int type;
-        int coordinates[2];
-        int board[4][4];
-    };
+void HandleTCPClient(int clntSock, const char* gamePath){
 
     int BUFSIZE = sizeof(struct action);
+    struct action serverGameBoard;
+    struct action userGameBoard;
 
-   do { 
-        struct action serverResponse;
-        serverResponse.type = 777;
-        ssize_t numBytesSent = send(clntSock, &serverResponse, sizeof(serverResponse), 0);
+    // loading board
+    int fileResponse = initGameBoard(&serverGameBoard, gamePath);
+    if (fileResponse < 0)
+        DieWithSystemMessage("open(<input_file>) failed\n");
+
+    // waiting for init game request
+    int numBytesRcvd = recv(clntSock, &userGameBoard, BUFSIZE, 0);
+    if (numBytesRcvd < 0)
+        DieWithSystemMessage("recv() failed");
+    if(userGameBoard.type != 0)
+        DieWithSystemMessage("player should start game");
+    else{
+        // send board to play
+        memset(&userGameBoard.board, -2, sizeof(userGameBoard.board));
+
+        for (int i = 0; i < 4; i++){
+            userGameBoard.board[i][0] = -2;
+            userGameBoard.board[i][1] = -2;
+            userGameBoard.board[i][2] = -2;
+            userGameBoard.board[i][3] = -2;
+        };
+
+        ssize_t numBytesSent = send(clntSock, &userGameBoard, sizeof(userGameBoard), 0);
         if (numBytesSent < 0)
             DieWithSystemMessage("send() failed");
+    }
+    
+   do { 
+        // See if there is more data to receive
+        int numBytesRcvd = recv(clntSock, &userGameBoard, BUFSIZE, 0);
+        if (numBytesRcvd < 0)
+            DieWithSystemMessage("recv() failed");
+
+        printf("useAction: %d\n", userGameBoard.type);
+        
+        // switch (userGameBoard.type){
+        //     case 0:
+                
+        //         break;
+            
+        //     default:
+        //     break;
+        // }
+        
+        // ssize_t numBytesSent = send(clntSock, &serverGameBoard, sizeof(serverGameBoard), 0);
+        // if (numBytesSent < 0)
+        //     DieWithSystemMessage("send() failed");
 
         
-        // // See if there is more data to receive
-        // numBytesRcvd = recv(clntSock, &userAction, BUFSIZE, 0);
-        // if (numBytesRcvd < 0)
-        //     DieWithSystemMessage("recv() failed");
     }  while (0);
     
 
+}
+int initGameBoard(struct action *serverGameBoard, const char* gamePath){
+    FILE *gameConfig = fopen(gamePath, "r");
+    if (gameConfig == NULL){
+        return -1;
+    }
+    int read[4][4] = {};
+    for (int i = 0; i < 4; i++){
+        fscanf(gameConfig, "%d, %d, %d, %d", &read[i][0], &read[i][1], &read[i][2], &read[i][3] );
+    };
+    fclose(gameConfig);
 }

@@ -8,4 +8,4 @@ rm:
 client_test:
 	./client 127.0.0.1 51511 
 server_test:
-	./server v4 51511 -i input/jogo.txt
+	./server v4 51511 -i input/in.txt
