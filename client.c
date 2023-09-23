@@ -11,6 +11,8 @@
 void DieWithUserMessage(const char *msg, const char *detail);
 void DieWithSystemMessage(const char *msg);
 
+void HandleTCPServer(int clntSock);
+
 int main(int argc, char const *argv[])
 {
 
@@ -49,8 +51,8 @@ int main(int argc, char const *argv[])
     if (connect(sock, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0)
         DieWithSystemMessage("connect() failed");
     
-
-    printf("%s    %s %d\n", IP, PORT, argc);
+    HandleTCPServer(sock);
+    
     return 0;
 }
 
@@ -65,4 +67,20 @@ exit(1);
 void DieWithSystemMessage(const char *msg) {
 perror(msg);
 exit(1);
+}
+void HandleTCPServer(int clntSock){
+    struct action {
+        int type;
+        int coordinates[2];
+        int board[4][4];
+    };
+    struct action serverResponse;
+    memset(&serverResponse, 0, sizeof serverResponse);
+    int BUFSIZE = sizeof(struct action);
+
+    ssize_t numBytesRcvd = recv(clntSock, &serverResponse, BUFSIZE, 0);
+    if (numBytesRcvd < 0)
+        DieWithSystemMessage("recv() failed");
+
+    printf("Resposta do servidor eh: %d\n", serverResponse.type);
 }
