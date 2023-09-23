@@ -2,23 +2,10 @@
 #include <sys/socket.h> //socket()
 #include <netinet/in.h> //IPPROTO_TCP
 #include <string.h>
-
 #include <stdlib.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-
-
-void DieWithUserMessage(const char *msg, const char *detail);
-void DieWithSystemMessage(const char *msg);
-
-struct action {
-    int type;
-    int coordinates[2];
-    int board[4][4];
-};
-
-void HandleTCPServer(int clntSock);
-void printBoard(struct action message);
+#include "common.h"
 
 int main(int argc, char const *argv[])
 {
@@ -61,41 +48,4 @@ int main(int argc, char const *argv[])
     HandleTCPServer(sock);
     
     return 0;
-}
-
-
-void DieWithUserMessage(const char *msg, const char *detail) {
-fputs(msg, stderr);
-fputs(": ", stderr);
-fputs(detail, stderr);
-fputc('\n', stderr);
-exit(1);
-}
-void DieWithSystemMessage(const char *msg) {
-perror(msg);
-exit(1);
-}
-void HandleTCPServer(int clntSock){
-    int BUFSIZE = sizeof(struct action);
-    struct action message;
-    memset(&message, 0, sizeof message);
-
-    // init game
-    message.type = 0;
-    ssize_t numBytesSent = send(clntSock, &message, sizeof(message), 0);
-    if (numBytesSent < 0)
-        DieWithSystemMessage("send() failed");
-
-    do{
-        ssize_t numBytesRcvd = recv(clntSock, &message, BUFSIZE, 0);
-        if (numBytesRcvd < 0)
-            DieWithSystemMessage("recv() failed");
-        
-        printBoard(message);
-    }while(0);
-}
-void printBoard(struct action message){
-    for (int i = 0; i < 4; i++){
-        printf("%d, %d, %d, %d\n", message.board[i][0], message.board[i][1], message.board[i][2], message.board[i][3] );
-    };
 }

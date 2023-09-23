@@ -1,6 +1,6 @@
 all:
-	gcc client.c -o client
-	gcc server.c -o server
+	gcc client.c common.c -o client
+	gcc server.c common.c -o server
 
 rm:
 	rm server client
