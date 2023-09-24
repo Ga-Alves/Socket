@@ -45,35 +45,105 @@ void HandleTCPServer(int serverSock){
 
 
     do{
-        char userCommand[11] = {};
-        int x = -1;
-        int y = -1;
+        char userCommand[12] = {};
 
-        scanf("%s %d, %d", userCommand, &x, &y );
 
+        scanf("%s", userCommand);
+        // commands list
         int start = !strcmp(userCommand, "start");
         int reveal = !strcmp(userCommand, "reveal");
-        // int flag = !strcmp(userCommand, "flag");
-        // int remove_flag = !strcmp(userCommand, "remove_flag");
-        // int reset = !strcmp(userCommand, "reset");
+        int flag = !strcmp(userCommand, "flag");
+        int remove_flag = !strcmp(userCommand, "remove_flag");
+        int reset = !strcmp(userCommand, "reset");
         int exit = !strcmp(userCommand, "exit");
 
+
+        int x = -1;
+        int y = -1;
+        int hasError = 0;
+
         if (reveal){
-            message.type = REVEAL_TYPE;
-            message.coordinates[0] = x;
-            message.coordinates[1] = y;
+            scanf("%d, %d", &x, &y );
+            if (x > 3 || x < 0 || y > 3 || y < 0){
+                printf("error: invalid cell\n");
+                hasError = 1;
+            }
+            else if (message.board[x][y] >= 0){
+                printf("error: cell already revealed\n");
+                hasError = 1;
+            }
+            else {
+                // no errors
+                message.type = REVEAL_TYPE;
+                message.coordinates[0] = x;
+                message.coordinates[1] = y;
+            }
+            
         }
-
-        ssize_t numBytesSent = send(serverSock, &message, sizeof(message), 0);
-        if (numBytesSent < 0)
-            DieWithSystemMessage("send() failed");
+        else if (flag){
+            scanf("%d, %d", &x, &y );
+            if (x > 3 || x < 0 || y > 3 || y < 0){
+                printf("error: invalid cell\n");
+                hasError = 1;
+            }
+            else if (message.board[x][y] == FLAG_INT){
+                printf("error: cell already has a flag\n");
+                hasError = 1;
+            }
+            else if (message.board[x][y] >= -1){
+                printf("error: cannot insert flag in revealed cell\n");
+                hasError = 1;
+            }
+            else {
+                // no errors
+                message.type = FLAG_TYPE;
+                message.coordinates[0] = x;
+                message.coordinates[1] = y;
+            }
+        }
+        else if(remove_flag){
+            scanf("%d, %d", &x, &y );
+            if (x > 3 || x < 0 || y > 3 || y < 0){
+                printf("error: invalid cell\n");
+                hasError = 1;
+            }
+            else if (message.board[x][y] != FLAG_INT){
+                printf("error: there is no flag in this cell\n");
+                hasError = 1;
+            }
+            else {
+                // no erros
+                message.type = REMOVE_FLAG_TYPE;
+                message.coordinates[0] = x;
+                message.coordinates[1] = y;
+            }
+        }
+        else if(reset){
+            message.type = RESET_TYPE;
+        }
+        else if(exit){
+            message.type = EXIT_TYPE;
+        }
+        else {
+            printf("error: command not found\n");
+            hasError = 1;
+        }
         
-        
-        ssize_t numBytesRcvd = recv(serverSock, &message, BUFSIZE, 0);
-        if (numBytesRcvd < 0)
-            DieWithSystemMessage("recv() failed");
 
-        printBoard(message);
+        // handle erros on client side
+        if (!hasError){
+            ssize_t numBytesSent = send(serverSock, &message, sizeof(message), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+            
+            
+            ssize_t numBytesRcvd = recv(serverSock, &message, BUFSIZE, 0);
+            if (numBytesRcvd < 0)
+                DieWithSystemMessage("recv() failed");
+
+            printBoard(message);
+        }
+        
     }while(1);
 }
 
@@ -118,7 +188,7 @@ void HandleTCPClient(int clntSock, const char* gamePath){
     
    do { 
         // See if there is more data to receive
-        printf("-------h-----------\n");
+        // printf("-------h-----------\n");
       /**/  int numBytesRcvd = recv(clntSock, &userGameBoard, BUFSIZE, 0);
         if (numBytesRcvd < 0)
             DieWithSystemMessage("recv() failed");
@@ -137,9 +207,33 @@ void HandleTCPClient(int clntSock, const char* gamePath){
         else if (userGameBoard.type == REVEAL_TYPE){
             int x = userGameBoard.coordinates[0];
             int y = userGameBoard.coordinates[1];
-            printf("cooordenaadas: %d %d\n", x, y);
             userGameBoard.board[x][y] = serverGameBoard.board[x][y];
         }
+        else if (userGameBoard.type == FLAG_TYPE){
+            int x = userGameBoard.coordinates[0];
+            int y = userGameBoard.coordinates[1];
+            userGameBoard.board[x][y] = -3;
+        }
+        else if (userGameBoard.type == REMOVE_FLAG_TYPE){
+            int x = userGameBoard.coordinates[0];
+            int y = userGameBoard.coordinates[1];
+            userGameBoard.board[x][y] = -2;
+        }
+        else if (userGameBoard.type == RESET_TYPE){
+            // preparing board to play
+            printf("starting new game\n");  
+            memset(&userGameBoard, 0, sizeof(userGameBoard));
+            for (int i = 0; i < 4; i++){
+                userGameBoard.board[i][0] = -2;
+                userGameBoard.board[i][1] = -2;
+                userGameBoard.board[i][2] = -2;
+                userGameBoard.board[i][3] = -2;
+            };
+        }
+        // else if (userGameBoard.type == EXIT_TYPE){
+        //     close(clntSock);
+        // }
+        
 
         // send board to play
         ssize_t numBytesSent = send(clntSock, &userGameBoard, sizeof(userGameBoard), 0);

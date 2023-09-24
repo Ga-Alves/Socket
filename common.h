@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
+// type of message
 #define START_TYPE 0
 #define REVEAL_TYPE 1
 #define FLAG_TYPE 2
@@ -15,6 +16,12 @@
 #define WIN_TYPE 6
 #define EXIT_TYPE 7
 #define GAME_OVER_TYPE 8
+
+#define BOMB_INT -1
+#define OCULT_CELL_INT -2
+#define FLAG_INT -3
+
+
 
 struct message {
     int type;
