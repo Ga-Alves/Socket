@@ -22,7 +22,6 @@
 #define FLAG_INT -3
 
 
-
 struct message {
     int type;
     int coordinates[2];
@@ -34,6 +33,7 @@ void DieWithSystemMessage(const char *msg);
 //server functions
 void HandleTCPClient(int clntSock, const char* gamePath);
 int initGameBoard(struct message *serverGameBoard, const char* gamePath);
+int coutBombsOfBoard(int board[4][4]);
 
 //client functions
 void HandleTCPServer(int serverSock);
