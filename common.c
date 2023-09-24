@@ -123,6 +123,13 @@ void HandleTCPServer(int serverSock){
         }
         else if(exit){
             message.type = EXIT_TYPE;
+            ssize_t numBytesSent = send(serverSock, &message, sizeof(message), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+            int errorShutdown = shutdown(serverSock, SHUT_RDWR);
+            if (errorShutdown < 0)
+                DieWithSystemMessage("shutdown() failed");
+            return;
         }
         else {
             printf("error: command not found\n");
@@ -186,10 +193,11 @@ void HandleTCPClient(int clntSock, const char* gamePath){
 
     
     
-   do { 
-        // See if there is more data to receive
-        // printf("-------h-----------\n");
-      /**/  int numBytesRcvd = recv(clntSock, &userGameBoard, BUFSIZE, 0);
+    int clientCloseSocket = 0;
+    do { 
+
+        clientCloseSocket = 0;
+        int numBytesRcvd = recv(clntSock, &userGameBoard, BUFSIZE, 0);
         if (numBytesRcvd < 0)
             DieWithSystemMessage("recv() failed");
 
@@ -230,9 +238,10 @@ void HandleTCPClient(int clntSock, const char* gamePath){
                 userGameBoard.board[i][3] = -2;
             };
         }
-        // else if (userGameBoard.type == EXIT_TYPE){
-        //     close(clntSock);
-        // }
+        else if (userGameBoard.type == EXIT_TYPE){
+            printf("client disconnected\n");
+            clientCloseSocket = 1;
+        }
         
 
         // send board to play
@@ -240,8 +249,7 @@ void HandleTCPClient(int clntSock, const char* gamePath){
         if (numBytesSent < 0)
             DieWithSystemMessage("send() failed");
         
-    }  while (1);
-    
+    }  while (!clientCloseSocket);
 
 }
 

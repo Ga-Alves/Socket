@@ -41,25 +41,26 @@ int main(int argc, char const *argv[])
         DieWithSystemMessage("listen() failed");
 
 
+    while (1){
+        struct sockaddr_in clntAddr; // Client address
+        // Set length of client address structure (in-out parameter)
+        socklen_t clntAddrLen = sizeof(clntAddr);
+        // Wait for a client to connect
+        int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
+        if (clntSock < 0)
+            DieWithSystemMessage("accept() failed");
+        
+
+        // // Print client Address
+        // char clntName[INET_ADDRSTRLEN]; // String to contain client address
+        // if (inet_ntop(AF_INET, &clntAddr.sin_addr.s_addr, clntName, INET_ADDRSTRLEN))
+        //     printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin_port));
+        // else
+        //     puts("Unable to get client address");
+        printf("client connected\n");
+
+        HandleTCPClient(clntSock, argv[4]);
+    }
     
-    struct sockaddr_in clntAddr; // Client address
-    // Set length of client address structure (in-out parameter)
-    socklen_t clntAddrLen = sizeof(clntAddr);
-    // Wait for a client to connect
-    int clntSock = accept(servSock, (struct sockaddr *) &clntAddr, &clntAddrLen);
-    if (clntSock < 0)
-        DieWithSystemMessage("accept() failed");
-    
-
-    // // Print client Address
-    // char clntName[INET_ADDRSTRLEN]; // String to contain client address
-    // if (inet_ntop(AF_INET, &clntAddr.sin_addr.s_addr, clntName, INET_ADDRSTRLEN))
-    //     printf("Handling client %s/%d\n", clntName, ntohs(clntAddr.sin_port));
-    // else
-    //     puts("Unable to get client address");
-    printf("client connected\n");
-
-
-    HandleTCPClient(clntSock, argv[4]);
     return 0;
 }
