@@ -38,3 +38,5 @@ int coutBombsOfBoard(int board[4][4]);
 //client functions
 void HandleTCPServer(int serverSock);
 void printBoard(struct message message);
+int isIPv4(const char *ipAddress);
+int isIPv6(const char *ipAddress);

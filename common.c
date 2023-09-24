@@ -199,6 +199,18 @@ void printBoard(struct message message){
         printf("\n");
     };
 }
+int isIPv4(const char *ipAddress)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET, ipAddress, &(sa.sin_addr));
+    return result != 0;
+}
+int isIPv6(const char *ipAddress)
+{
+    struct sockaddr_in sa;
+    int result = inet_pton(AF_INET6, ipAddress, &(sa.sin_addr));
+    return result != 0;
+}
 
 //------------------//
 // SERVER FUNCTIONS //
