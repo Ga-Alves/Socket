@@ -25,7 +25,11 @@ int main(int argc, char const *argv[])
     }
 
     in_port_t servPort = atoi(argv[2]); // First arg: local port
-
+    
+    
+    //---------------//
+    // Caso for IPv4 //
+    //---------------//
     if (!strcmp(argv[1], "v4")){
         // Create socket for incoming connections
         int servSock; // Socket descriptor for server
@@ -64,6 +68,9 @@ int main(int argc, char const *argv[])
         }
 
     }
+    //---------------//
+    // Caso for IPv6 //
+    //---------------//
     else if(!strcmp(argv[1], "v6")){
         int servSock; // Socket descriptor for server
         if ((servSock = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP)) < 0)
@@ -128,6 +135,13 @@ void HandleTCPClient(int sock, const char* gamePath){
         if (numBytesRcvd < 0)
             DieWithSystemMessage("recv() failed");
 
+        
+        int x = userGameBoard.coordinates[0];
+        int y = userGameBoard.coordinates[1];
+
+        //----------------//
+        // Server Actions //
+        //----------------//
         if (userGameBoard.type == START_TYPE){
             // preparing board to play
             memset(&userGameBoard, 0, sizeof(userGameBoard));
@@ -141,12 +155,10 @@ void HandleTCPClient(int sock, const char* gamePath){
 
         }
         else if (userGameBoard.type == REVEAL_TYPE){
-            int x = userGameBoard.coordinates[0];
-            int y = userGameBoard.coordinates[1];
-
+            // mostra celula para jogador
             userGameBoard.board[x][y] = serverGameBoard.board[x][y];
 
-
+            // Verifica Game Over
             if (serverGameBoard.board[x][y] == BOMB_INT){
                 userGameBoard.type = GAME_OVER_TYPE;
                 for (int i = 0; i < 4; i++){
@@ -157,6 +169,7 @@ void HandleTCPClient(int sock, const char* gamePath){
                 };
             }
             else {
+                // Verifica se Venceu com a atual jogada
                 int numOfNotReveladeCells = 0;
                 for (int i = 0; i < 4; i++)
                     for (int j = 0; j < 4; j++)
@@ -177,13 +190,9 @@ void HandleTCPClient(int sock, const char* gamePath){
             }
         }
         else if (userGameBoard.type == FLAG_TYPE){
-            int x = userGameBoard.coordinates[0];
-            int y = userGameBoard.coordinates[1];
             userGameBoard.board[x][y] = -3;
         }
         else if (userGameBoard.type == REMOVE_FLAG_TYPE){
-            int x = userGameBoard.coordinates[0];
-            int y = userGameBoard.coordinates[1];
             userGameBoard.board[x][y] = -2;
         }
         else if (userGameBoard.type == RESET_TYPE){

@@ -139,9 +139,9 @@ void HandleTCPServer(int sock){
 
         printBoard(message);
 
-        int isGameOver = 0;
+        int isGameFinish = 0;
         do{
-            isGameOver = 0;
+            isGameFinish = 0;
             char userCommand[12] = {};
 
 
@@ -245,17 +245,17 @@ void HandleTCPServer(int sock){
                     DieWithSystemMessage("recv() failed");
 
                 if(message.type == GAME_OVER_TYPE){
-                    isGameOver = 1;
+                    isGameFinish = 1;
                     printf("GAME OVER!\n");
                 }
                 else if(message.type == WIN_TYPE){
-                    isGameOver = 1;
+                    isGameFinish = 1;
                     printf("YOU WIN!\n");
                 }
                 printBoard(message);
             }
             
-        }while(!isGameOver);   
+        }while(!isGameFinish);   
     }
 }
 
