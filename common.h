@@ -17,12 +17,13 @@
 #define EXIT_TYPE 7
 #define GAME_OVER_TYPE 8
 
+// value of cells
 #define BOMB_INT -1
 #define OCULT_CELL_INT -2
 #define FLAG_INT -3
 
 
-struct message {
+struct action {
     int type;
     int coordinates[2];
     int board[4][4];
@@ -30,13 +31,3 @@ struct message {
 void DieWithUserMessage(const char *msg, const char *detail) ;
 void DieWithSystemMessage(const char *msg);
 
-//server functions
-void HandleTCPClient(int clntSock, const char* gamePath);
-int initGameBoard(struct message *serverGameBoard, const char* gamePath);
-int coutBombsOfBoard(int board[4][4]);
-
-//client functions
-void HandleTCPServer(int serverSock);
-void printBoard(struct message message);
-int isIPv4(const char *ipAddress);
-int isIPv6(const char *ipAddress);

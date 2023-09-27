@@ -1,16 +1,16 @@
 all:
-	gcc client.c common.c -o client
-	gcc server.c common.c -o server
+	gcc client.c common.c -o ./bin/client
+	gcc server.c common.c -o ./bin/server
 
 rm:
-	rm server client
+	rm ./bin/*
 
 client_v4:
-	./client 127.0.0.1 51511 
+	./bin/client 127.0.0.1 51511 
 server_v4:
-	./server v4 51511 -i input/in.txt
+	./bin/server v4 51511 -i input/in.txt
 
 client_v6:
-	./client ::1 51511 
+	./bin/client ::1 51511 
 server_v6:
-	./server v6 51511 -i input/in.txt
+	./bin/server v6 51511 -i input/in.txt
