@@ -43,7 +43,7 @@ int main(int argc, char const *argv[])
         servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
         servAddr.sin_port = htons(servPort); // Local port
 
-        inet_pton(AF_INET, "192.168.0.182" , &(servAddr.sin_addr));
+        // inet_pton(AF_INET, "192.168.0.182" , &(servAddr.sin_addr));
 
         // Bind to the local address
         if (bind(servSock, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
@@ -119,7 +119,7 @@ void HandleTCPClient(int sock, const char* gamePath){
 
     int BUFSIZE = sizeof(struct action);
     struct action serverGameBoard;
-    struct action userGameBoard;
+    struct action userGameboardStatus;
 
     // loading board
     int fileResponse = initGameBoard(&serverGameBoard, gamePath);
@@ -131,42 +131,44 @@ void HandleTCPClient(int sock, const char* gamePath){
     do { 
 
         clientCloseSocket = 0;
-        int numBytesRcvd = recv(sock, &userGameBoard, BUFSIZE, 0);
+        struct action userRequestAction;
+        memset(&userRequestAction, 0, sizeof(userRequestAction));
+        int numBytesRcvd = recv(sock, &userRequestAction, BUFSIZE, 0);
         if (numBytesRcvd < 0)
             DieWithSystemMessage("recv() failed");
 
         
-        int x = userGameBoard.coordinates[0];
-        int y = userGameBoard.coordinates[1];
+        int x = userRequestAction.coordinates[0];
+        int y = userRequestAction.coordinates[1];
 
         //----------------//
         // Server Actions //
         //----------------//
-        if (userGameBoard.type == START_TYPE){
+        if (userRequestAction.type == START_TYPE){
             // preparing board to play
-            memset(&userGameBoard, 0, sizeof(userGameBoard));
-            userGameBoard.type = STATE_TYPE;
+            memset(&userGameboardStatus, 0, sizeof(userGameboardStatus));
+            userGameboardStatus.type = STATE_TYPE;
             for (int i = 0; i < 4; i++){
-                userGameBoard.board[i][0] = -2;
-                userGameBoard.board[i][1] = -2;
-                userGameBoard.board[i][2] = -2;
-                userGameBoard.board[i][3] = -2;
+                userGameboardStatus.board[i][0] = -2;
+                userGameboardStatus.board[i][1] = -2;
+                userGameboardStatus.board[i][2] = -2;
+                userGameboardStatus.board[i][3] = -2;
             };
 
         }
-        else if (userGameBoard.type == REVEAL_TYPE){
+        else if (userRequestAction.type == REVEAL_TYPE){
             // mostra celula para jogador
-            userGameBoard.type = STATE_TYPE;
-            userGameBoard.board[x][y] = serverGameBoard.board[x][y];
+            userGameboardStatus.type = STATE_TYPE;
+            userGameboardStatus.board[x][y] = serverGameBoard.board[x][y];
 
             // Verifica Game Over
             if (serverGameBoard.board[x][y] == BOMB_INT){
-                userGameBoard.type = GAME_OVER_TYPE;
+                userGameboardStatus.type = GAME_OVER_TYPE;
                 for (int i = 0; i < 4; i++){
-                    userGameBoard.board[i][0] = serverGameBoard.board[i][0];
-                    userGameBoard.board[i][1] = serverGameBoard.board[i][1];
-                    userGameBoard.board[i][2] = serverGameBoard.board[i][2];
-                    userGameBoard.board[i][3] = serverGameBoard.board[i][3];
+                    userGameboardStatus.board[i][0] = serverGameBoard.board[i][0];
+                    userGameboardStatus.board[i][1] = serverGameBoard.board[i][1];
+                    userGameboardStatus.board[i][2] = serverGameBoard.board[i][2];
+                    userGameboardStatus.board[i][3] = serverGameBoard.board[i][3];
                 };
             }
             else {
@@ -174,50 +176,50 @@ void HandleTCPClient(int sock, const char* gamePath){
                 int numOfReveladeCells = 0;
                 for (int i = 0; i < 4; i++)
                     for (int j = 0; j < 4; j++)
-                        if (userGameBoard.board[i][j] >= 0 )
+                        if (userGameboardStatus.board[i][j] >= 0 )
                             numOfReveladeCells++;
                 
                 int isWin = ((16 - numOfReveladeCells) == numOfBombs);
                 
                 if (isWin){
-                    userGameBoard.type = WIN_TYPE;
+                    userGameboardStatus.type = WIN_TYPE;
                     for (int i = 0; i < 4; i++){
-                        userGameBoard.board[i][0] = serverGameBoard.board[i][0];
-                        userGameBoard.board[i][1] = serverGameBoard.board[i][1];
-                        userGameBoard.board[i][2] = serverGameBoard.board[i][2];
-                        userGameBoard.board[i][3] = serverGameBoard.board[i][3];
+                        userGameboardStatus.board[i][0] = serverGameBoard.board[i][0];
+                        userGameboardStatus.board[i][1] = serverGameBoard.board[i][1];
+                        userGameboardStatus.board[i][2] = serverGameBoard.board[i][2];
+                        userGameboardStatus.board[i][3] = serverGameBoard.board[i][3];
                     };
                 }
             }
         }
-        else if (userGameBoard.type == FLAG_TYPE){
-            userGameBoard.type = STATE_TYPE;
-            userGameBoard.board[x][y] = -3;
+        else if (userRequestAction.type == FLAG_TYPE){
+            userGameboardStatus.type = STATE_TYPE;
+            userGameboardStatus.board[x][y] = -3;
         }
-        else if (userGameBoard.type == REMOVE_FLAG_TYPE){
-            userGameBoard.type = STATE_TYPE;
-            userGameBoard.board[x][y] = -2;
+        else if (userRequestAction.type == REMOVE_FLAG_TYPE){
+            userGameboardStatus.type = STATE_TYPE;
+            userGameboardStatus.board[x][y] = -2;
         }
-        else if (userGameBoard.type == RESET_TYPE){
+        else if (userRequestAction.type == RESET_TYPE){
             // preparing board to play
             printf("starting new game\n");  
-            memset(&userGameBoard, 0, sizeof(userGameBoard));
-            userGameBoard.type = RESET_TYPE;
+            memset(&userGameboardStatus, 0, sizeof(userGameboardStatus));
+            userGameboardStatus.type = RESET_TYPE;
             for (int i = 0; i < 4; i++){
-                userGameBoard.board[i][0] = -2;
-                userGameBoard.board[i][1] = -2;
-                userGameBoard.board[i][2] = -2;
-                userGameBoard.board[i][3] = -2;
+                userGameboardStatus.board[i][0] = -2;
+                userGameboardStatus.board[i][1] = -2;
+                userGameboardStatus.board[i][2] = -2;
+                userGameboardStatus.board[i][3] = -2;
             };
         }
-        else if (userGameBoard.type == EXIT_TYPE){
+        else if (userRequestAction.type == EXIT_TYPE){
             printf("client disconnected\n");
             clientCloseSocket = 1;
         }
         
 
         // send board to play
-        ssize_t numBytesSent = send(sock, &userGameBoard, sizeof(userGameBoard), 0);
+        ssize_t numBytesSent = send(sock, &userGameboardStatus, sizeof(userGameboardStatus), 0);
         if (numBytesSent < 0)
             DieWithSystemMessage("send() failed");
         
