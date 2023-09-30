@@ -10,7 +10,7 @@
 #define MAXPENDING 1
 
 //server functions
-void HandleTCPClient(int sock, const char* gamePath);
+void HandleTCPClient(int sock, struct action *serverGameboard);
 int initGameBoard(struct action *serverGameBoard, const char* gamePath);
 int coutBombsOfBoard(int board[4][4]);
 
@@ -43,7 +43,7 @@ int main(int argc, char const *argv[])
         servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
         servAddr.sin_port = htons(servPort); // Local port
 
-        // inet_pton(AF_INET, "192.168.0.182" , &(servAddr.sin_addr));
+        // inet_pton(AF_INET, "your_public_IP" , &(servAddr.sin_addr));
 
         // Bind to the local address
         if (bind(servSock, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
@@ -52,6 +52,14 @@ int main(int argc, char const *argv[])
         // linten channel
         if (listen(servSock, MAXPENDING) < 0)
             DieWithSystemMessage("listen() failed");
+
+
+        // Criando o tabuleiro do servidor
+        struct action serverGameboard;
+        int fileResponse = initGameBoard(&serverGameboard, argv[4]);
+        if (fileResponse < 0)
+        DieWithSystemMessage("open(<input_file>) failed\n");
+        printBoard(serverGameboard);
 
         while (1){
             struct sockaddr_in clntAddr; // Client address
@@ -64,7 +72,7 @@ int main(int argc, char const *argv[])
             
             printf("client connected\n");
 
-            HandleTCPClient(sock, argv[4]);
+            HandleTCPClient(sock, &serverGameboard);
         }
 
     }
@@ -91,6 +99,13 @@ int main(int argc, char const *argv[])
         if (listen(servSock, MAXPENDING) < 0)
             DieWithSystemMessage("listen() failed");
 
+        // Criando o tabuleiro do servidor
+        struct action serverGameboard;
+        int fileResponse = initGameBoard(&serverGameboard, argv[4]);
+        if (fileResponse < 0)
+        DieWithSystemMessage("open(<input_file>) failed\n");
+        printBoard(serverGameboard);
+
         while (1){
             struct sockaddr_in6 clntAddr; // Client address
             // Set length of client address structure (in-out parameter)
@@ -102,7 +117,7 @@ int main(int argc, char const *argv[])
             
             printf("client connected\n");
 
-            HandleTCPClient(sock, argv[4]);
+            HandleTCPClient(sock, &serverGameboard);
         }
 
     }
@@ -115,17 +130,13 @@ int main(int argc, char const *argv[])
 //------------------//
 // SERVER FUNCTIONS //
 //------------------//
-void HandleTCPClient(int sock, const char* gamePath){
+void HandleTCPClient(int sock, struct action *serverGameboard){
 
     int BUFSIZE = sizeof(struct action);
-    struct action serverGameBoard;
     struct action userGameboardStatus;
 
     // loading board
-    int fileResponse = initGameBoard(&serverGameBoard, gamePath);
-    int numOfBombs = coutBombsOfBoard(serverGameBoard.board);
-    if (fileResponse < 0)
-        DieWithSystemMessage("open(<input_file>) failed\n");
+    int numOfBombs = coutBombsOfBoard(serverGameboard->board);
 
     int clientCloseSocket = 0;
     do { 
@@ -159,16 +170,16 @@ void HandleTCPClient(int sock, const char* gamePath){
         else if (userRequestAction.type == REVEAL_TYPE){
             // mostra celula para jogador
             userGameboardStatus.type = STATE_TYPE;
-            userGameboardStatus.board[x][y] = serverGameBoard.board[x][y];
+            userGameboardStatus.board[x][y] = serverGameboard->board[x][y];
 
             // Verifica Game Over
-            if (serverGameBoard.board[x][y] == BOMB_INT){
+            if (serverGameboard->board[x][y] == BOMB_INT){
                 userGameboardStatus.type = GAME_OVER_TYPE;
                 for (int i = 0; i < 4; i++){
-                    userGameboardStatus.board[i][0] = serverGameBoard.board[i][0];
-                    userGameboardStatus.board[i][1] = serverGameBoard.board[i][1];
-                    userGameboardStatus.board[i][2] = serverGameBoard.board[i][2];
-                    userGameboardStatus.board[i][3] = serverGameBoard.board[i][3];
+                    userGameboardStatus.board[i][0] = serverGameboard->board[i][0];
+                    userGameboardStatus.board[i][1] = serverGameboard->board[i][1];
+                    userGameboardStatus.board[i][2] = serverGameboard->board[i][2];
+                    userGameboardStatus.board[i][3] = serverGameboard->board[i][3];
                 };
             }
             else {
@@ -184,10 +195,10 @@ void HandleTCPClient(int sock, const char* gamePath){
                 if (isWin){
                     userGameboardStatus.type = WIN_TYPE;
                     for (int i = 0; i < 4; i++){
-                        userGameboardStatus.board[i][0] = serverGameBoard.board[i][0];
-                        userGameboardStatus.board[i][1] = serverGameBoard.board[i][1];
-                        userGameboardStatus.board[i][2] = serverGameBoard.board[i][2];
-                        userGameboardStatus.board[i][3] = serverGameBoard.board[i][3];
+                        userGameboardStatus.board[i][0] = serverGameboard->board[i][0];
+                        userGameboardStatus.board[i][1] = serverGameboard->board[i][1];
+                        userGameboardStatus.board[i][2] = serverGameboard->board[i][2];
+                        userGameboardStatus.board[i][3] = serverGameboard->board[i][3];
                     };
                 }
             }
