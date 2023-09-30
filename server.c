@@ -43,7 +43,7 @@ int main(int argc, char const *argv[])
         servAddr.sin_addr.s_addr = htonl(INADDR_ANY); // Any incoming interface
         servAddr.sin_port = htons(servPort); // Local port
 
-        // inet_pton(AF_INET, "your_ip" , &(servAddr.sin_addr));
+        inet_pton(AF_INET, "192.168.0.182" , &(servAddr.sin_addr));
 
         // Bind to the local address
         if (bind(servSock, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
@@ -145,7 +145,7 @@ void HandleTCPClient(int sock, const char* gamePath){
         if (userGameBoard.type == START_TYPE){
             // preparing board to play
             memset(&userGameBoard, 0, sizeof(userGameBoard));
-            userGameBoard.type = START_TYPE;
+            userGameBoard.type = STATE_TYPE;
             for (int i = 0; i < 4; i++){
                 userGameBoard.board[i][0] = -2;
                 userGameBoard.board[i][1] = -2;
@@ -156,6 +156,7 @@ void HandleTCPClient(int sock, const char* gamePath){
         }
         else if (userGameBoard.type == REVEAL_TYPE){
             // mostra celula para jogador
+            userGameBoard.type = STATE_TYPE;
             userGameBoard.board[x][y] = serverGameBoard.board[x][y];
 
             // Verifica Game Over
@@ -170,13 +171,13 @@ void HandleTCPClient(int sock, const char* gamePath){
             }
             else {
                 // Verifica se Venceu com a atual jogada
-                int numOfNotReveladeCells = 0;
+                int numOfReveladeCells = 0;
                 for (int i = 0; i < 4; i++)
                     for (int j = 0; j < 4; j++)
-                        if (userGameBoard.board[i][j] == OCULT_CELL_INT || userGameBoard.board[i][j] == FLAG_INT)
-                            numOfNotReveladeCells++;
+                        if (userGameBoard.board[i][j] >= 0 )
+                            numOfReveladeCells++;
                 
-                int isWin = (numOfNotReveladeCells == numOfBombs);
+                int isWin = ((16 - numOfReveladeCells) == numOfBombs);
                 
                 if (isWin){
                     userGameBoard.type = WIN_TYPE;
@@ -190,9 +191,11 @@ void HandleTCPClient(int sock, const char* gamePath){
             }
         }
         else if (userGameBoard.type == FLAG_TYPE){
+            userGameBoard.type = STATE_TYPE;
             userGameBoard.board[x][y] = -3;
         }
         else if (userGameBoard.type == REMOVE_FLAG_TYPE){
+            userGameBoard.type = STATE_TYPE;
             userGameBoard.board[x][y] = -2;
         }
         else if (userGameBoard.type == RESET_TYPE){
