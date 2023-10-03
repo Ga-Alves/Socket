@@ -3,3 +3,4 @@ server
 .vscode
 *.out
 test.c
+/bin/*
