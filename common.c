@@ -18,13 +18,13 @@ void printBoard(struct action message){
         for (int j = 0; j < 4; j++){
             switch (message.board[i][j])
             {
-            case -1:
+            case BOMB_INT:
                 printf("*\t\t");
                 break;
-            case -2:
+            case OCULT_CELL_INT:
                 printf("-\t\t");
                 break;
-            case -3:
+            case FLAG_INT:
                 printf(">\t\t");
                 break;
             default:

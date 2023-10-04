@@ -182,8 +182,8 @@ void HandleTCPClient(int sock, struct action *serverGameboard){
                     userGameboardStatus.board[i][3] = serverGameboard->board[i][3];
                 };
             }
+            // Verifica se Venceu com a atual jogada
             else {
-                // Verifica se Venceu com a atual jogada
                 int numOfReveladeCells = 0;
                 for (int i = 0; i < 4; i++)
                     for (int j = 0; j < 4; j++)
