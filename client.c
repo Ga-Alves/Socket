@@ -100,12 +100,68 @@ int main(int argc, char const *argv[])
 void HandleTCPServer(int sock){
 
     BlogOperation operation;
+
+    // primeira requisição
     memset(&operation, 0, sizeof(BlogOperation));
-    scanf("%s", operation.content);
+    operation.client_id = 0;
+    operation.operation_type = NOVA_CONEXAO;
+    operation.server_response = FALSE;
+    strcpy(operation.topic, "");
+    strcpy(operation.content, "");
 
     ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
     if (numBytesSent < 0)
         DieWithSystemMessage("send() failed");
+
+
+    //recebe client id
+    int numBytesRcvd = recv(sock, &operation, sizeof(BlogOperation), 0);
+    if (numBytesRcvd < 0)
+        DieWithSystemMessage("recv() failed");
+
+    int isExit = 0;
+    while (!isExit){
+        char inptStr[1000] = {};
+        fgets(inptStr, sizeof(inptStr), stdin);
+
+        char *first4 = substring(0, 4, inptStr);
+        char *first9 = substring(0, 9, inptStr);
+        char *first10 = substring(0, 10, inptStr);
+        char *first11 = substring(0, 11, inptStr);
+
+        int exit = !strcmp(first4, "exit\0");
+        int list = !strcmp(first4, "list");
+        int subscribe = !strcmp(first9, "subscribe");
+        int publish_in = !strcmp(first10, "publish in");
+        int unsubscribe = !strcmp(first11, "unsubscribe");
+
+        free(first4);
+        free(first9);
+        free(first10);
+        free(first11);
+
+
+        if (exit){
+            printf("comando exit reconhecido!\n");
+        }
+        else if (list){
+            printf("comando list reconhecido!\n");
+        }
+        else if (subscribe){
+            printf("comando subscribe reconhecido!\n");
+        }
+        else if (publish_in){
+            printf("comando publish_in reconhecido!\n");
+        }
+        else if (unsubscribe){
+            printf("comando unsubscribe reconhecido!\n");
+        }
+        else{
+            printf("COMMAND NOT FOUND\n");
+        }
+        
+    }
+    
 
     int errorclose = close(sock);
     if (errorclose < 0)

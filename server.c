@@ -8,13 +8,19 @@
 #include "common.h"
 
 #define MAXPENDING 1
+#define MAX_CONNECTIONS 10
 
 //server functions
 void * HandleThreadTCPClient(void * param);
 
+//mutex
+pthread_mutex_t mutex;
+int ids[MAX_CONNECTIONS] = {};
+
 // ./server v4 51511 -i input/jogo.txt
 int main(int argc, char const *argv[])
 {
+    pthread_mutex_init(&mutex, NULL);
 
     if (argc < 5){
         printf("Quantidade de parâmetros errada!\n");
@@ -64,6 +70,7 @@ int main(int argc, char const *argv[])
             threadParam * param = malloc(sizeof(threadParam));
             memset(param, 0, sizeof(threadParam));
             param->sock = sock;
+            param->mutex = mutex;
 
             pthread_t tid;
             pthread_create(&tid, NULL, HandleThreadTCPClient, param);
@@ -102,11 +109,10 @@ int main(int argc, char const *argv[])
             if (sock < 0)
                 DieWithSystemMessage("accept() failed");
             
-            printf("client connected\n");
-            
             threadParam * param = malloc(sizeof(threadParam));
             memset(param, 0, sizeof(threadParam));
             param->sock = sock;
+            param->mutex = mutex;
 
             pthread_t tid;
             pthread_create(&tid, NULL, HandleThreadTCPClient, param);
@@ -131,11 +137,28 @@ void * HandleThreadTCPClient(void * param){
     BlogOperation operation;
     memset(&operation, 0, sizeof(BlogOperation));
 
+    // give user id
     int BUFSIZE = sizeof(BlogOperation);
     int numBytesRcvd = recv(t_param.sock, &operation, BUFSIZE, 0);
     if (numBytesRcvd < 0)
         DieWithSystemMessage("recv() failed");
 
-    printf("%s\n", operation.content);
+    pthread_mutex_lock(&mutex);
+    int freeId = -1;
+    for(int i = 0; i < MAX_CONNECTIONS; i++) {
+        if (ids[i] == 0){
+            freeId = i;
+            break;
+        }
+    }
+
+    ids[freeId] = 1;
+    operation.client_id = freeId;
+    operation.server_response = 1;
+    printf("client %d connected\n", freeId + 1);
+    pthread_mutex_unlock(&mutex);
+    send(t_param.sock, &operation, BUFSIZE, 0);
+
+    
 
 }
