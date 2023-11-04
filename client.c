@@ -143,6 +143,14 @@ void HandleTCPServer(int sock){
 
         if (exit){
             printf("comando exit reconhecido!\n");
+            operation.server_response = FALSE;
+            operation.operation_type = DESCONECTAR_SERVIDOR;
+
+            ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+
+            isExit = TRUE;
         }
         else if (list){
             printf("comando list reconhecido!\n");
@@ -162,7 +170,6 @@ void HandleTCPServer(int sock){
         
     }
     
-
     int errorclose = close(sock);
     if (errorclose < 0)
         DieWithSystemMessage("close() failed");

@@ -65,8 +65,6 @@ int main(int argc, char const *argv[])
             if (sock < 0)
                 DieWithSystemMessage("accept() failed");
             
-            printf("client connected\n");
-            
             threadParam * param = malloc(sizeof(threadParam));
             memset(param, 0, sizeof(threadParam));
             param->sock = sock;
@@ -158,6 +156,22 @@ void * HandleThreadTCPClient(void * param){
     printf("client %d connected\n", freeId + 1);
     pthread_mutex_unlock(&mutex);
     send(t_param.sock, &operation, BUFSIZE, 0);
+
+    int isComplete = FALSE;
+    while (!isComplete){
+        int numBytesRcvd = recv(t_param.sock, &operation, BUFSIZE, 0);
+        if (numBytesRcvd < 0)
+            DieWithSystemMessage("recv() failed");
+
+        if (operation.operation_type == DESCONECTAR_SERVIDOR){
+            isComplete = TRUE;
+            pthread_mutex_lock(&mutex);
+            ids[operation.client_id] = 0;
+            pthread_mutex_unlock(&mutex);
+            printf("client %d desconnected\n", operation.client_id + 1);
+        }
+    }
+    
 
     
 
