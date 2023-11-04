@@ -10,7 +10,6 @@
 
 //client functions
 void HandleTCPServer(int sock);
-void printBoard(struct action message);
 int isIPv4(const char *ipAddress);
 int isIPv6(const char *ipAddress);
 
@@ -99,164 +98,18 @@ int main(int argc, char const *argv[])
 // CLIENT FUNCTIONS //
 //------------------//
 void HandleTCPServer(int sock){
-    while (1){
-        int BUFSIZE = sizeof(struct action);
-        struct action message;
-        memset(&message, 0, sizeof message);
 
-        // waiting for client start the game
-        char userCommand[11] = {};
-        scanf("%s", userCommand);
-        int start = !strcmp(userCommand, "start");
-        int exit = !strcmp(userCommand, "exit");
-        while (!start && !exit){
-            scanf("%s", userCommand);
-            start = !strcmp(userCommand, "start");
-            exit = !strcmp(userCommand, "exit");
-        }
+    BlogOperation operation;
+    memset(&operation, 0, sizeof(BlogOperation));
+    scanf("%s", operation.content);
 
-        if (exit){
-            message.type = EXIT_TYPE;
-            ssize_t numBytesSent = send(sock, &message, sizeof(message), 0);
-            if (numBytesSent < 0)
-                DieWithSystemMessage("send() failed");
-            int errorClose = close(sock);
-            if (errorClose < 0)
-                DieWithSystemMessage("close() failed");
-            return;
-        }
-        
-        // init game
-        message.type = START_TYPE;
-        ssize_t numBytesSent = send(sock, &message, sizeof(message), 0);
-        if (numBytesSent < 0)
-            DieWithSystemMessage("send() failed");
-        
-        
-        ssize_t numBytesRcvd = recv(sock, &message, BUFSIZE, 0);
-        if (numBytesRcvd < 0)
-            DieWithSystemMessage("recv() failed");
+    ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+    if (numBytesSent < 0)
+        DieWithSystemMessage("send() failed");
 
-        printBoard(message);
-
-        int isGameFinish = 0;
-        do{
-            isGameFinish = 0;
-            char userCommand[12] = {};
-
-
-            scanf("%s", userCommand);
-            // commands list
-            int start = !strcmp(userCommand, "start");
-            int reveal = !strcmp(userCommand, "reveal");
-            int flag = !strcmp(userCommand, "flag");
-            int remove_flag = !strcmp(userCommand, "remove_flag");
-            int reset = !strcmp(userCommand, "reset");
-            int exit = !strcmp(userCommand, "exit");
-
-
-            int x = -1;
-            int y = -1;
-            int hasError = 0;
-
-            if (reveal){
-                scanf("%d, %d", &x, &y );
-                if (x > 3 || x < 0 || y > 3 || y < 0){
-                    printf("error: invalid cell\n");
-                    hasError = 1;
-                }
-                else if (message.board[x][y] >= 0){
-                    printf("error: cell already revealed\n");
-                    hasError = 1;
-                }
-                else {
-                    // no errors
-                    message.type = REVEAL_TYPE;
-                    message.coordinates[0] = x;
-                    message.coordinates[1] = y;
-                }
-                
-            }
-            else if (flag){
-                scanf("%d, %d", &x, &y );
-                if (x > 3 || x < 0 || y > 3 || y < 0){
-                    printf("error: invalid cell\n");
-                    hasError = 1;
-                }
-                else if (message.board[x][y] == FLAG_INT){
-                    printf("error: cell already has a flag\n");
-                    hasError = 1;
-                }
-                else if (message.board[x][y] >= -1){
-                    printf("error: cannot insert flag in revealed cell\n");
-                    hasError = 1;
-                }
-                else {
-                    // no errors
-                    message.type = FLAG_TYPE;
-                    message.coordinates[0] = x;
-                    message.coordinates[1] = y;
-                }
-            }
-            else if(remove_flag){
-                scanf("%d, %d", &x, &y );
-                if (x > 3 || x < 0 || y > 3 || y < 0){
-                    printf("error: invalid cell\n");
-                    hasError = 1;
-                }
-                else if (message.board[x][y] != FLAG_INT){
-                    printf("error: there is no flag in this cell\n");
-                    hasError = 1;
-                }
-                else {
-                    // no erros
-                    message.type = REMOVE_FLAG_TYPE;
-                    message.coordinates[0] = x;
-                    message.coordinates[1] = y;
-                }
-            }
-            else if(reset){
-                message.type = RESET_TYPE;
-            }
-            else if(exit){
-                message.type = EXIT_TYPE;
-                ssize_t numBytesSent = send(sock, &message, sizeof(message), 0);
-                if (numBytesSent < 0)
-                    DieWithSystemMessage("send() failed");
-                int errorclose = close(sock);
-                if (errorclose < 0)
-                    DieWithSystemMessage("close() failed");
-                return;
-            }
-            else {
-                printf("error: command not found\n");
-                hasError = 1;
-            }
-            
-            // handle erros on client side
-            if (!hasError){
-                ssize_t numBytesSent = send(sock, &message, sizeof(message), 0);
-                if (numBytesSent < 0)
-                    DieWithSystemMessage("send() failed");
-                
-                
-                ssize_t numBytesRcvd = recv(sock, &message, BUFSIZE, 0);
-                if (numBytesRcvd < 0)
-                    DieWithSystemMessage("recv() failed");
-
-                if(message.type == GAME_OVER_TYPE){
-                    isGameFinish = 1;
-                    printf("GAME OVER!\n");
-                }
-                else if(message.type == WIN_TYPE){
-                    isGameFinish = 1;
-                    printf("YOU WIN!\n");
-                }
-                printBoard(message);
-            }
-            
-        }while(!isGameFinish);   
-    }
+    int errorclose = close(sock);
+    if (errorclose < 0)
+        DieWithSystemMessage("close() failed");
 }
 
 int isIPv4(const char *ipAddress)

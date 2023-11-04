@@ -5,29 +5,21 @@
 #include <stdlib.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
-// type of message
-#define START_TYPE 0
-#define REVEAL_TYPE 1
-#define FLAG_TYPE 2
-#define STATE_TYPE 3
-#define REMOVE_FLAG_TYPE 4
-#define RESET_TYPE 5
-#define WIN_TYPE 6
-#define EXIT_TYPE 7
-#define GAME_OVER_TYPE 8
+struct BlogOperation {
+    int client_id;
+    int operation_type;
+    int server_response;
+    char topic[50];
+    char content[2048];
+} typedef BlogOperation;
 
-// value of cells
-#define BOMB_INT -1
-#define OCULT_CELL_INT -2
-#define FLAG_INT -3
+struct threadParam {
+    pthread_mutex_t mutex;
+    int sock;
+} typedef threadParam;
 
 
-struct action {
-    int type;
-    int coordinates[2];
-    int board[4][4];
-};
 void DieWithUserMessage(const char *msg, const char *detail) ;
 void DieWithSystemMessage(const char *msg);
-void printBoard(struct action message);
