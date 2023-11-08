@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include "common.h"
 
 #define MAXPENDING 1
@@ -16,11 +9,15 @@ void * HandleThreadTCPClient(void * param);
 //mutex
 pthread_mutex_t mutex;
 int ids[MAX_CONNECTIONS] = {};
+int sockets[MAX_CONNECTIONS] = {};
+lista ls;
+
 
 // ./server v4 51511 -i input/jogo.txt
 int main(int argc, char const *argv[])
 {
     pthread_mutex_init(&mutex, NULL);
+    init_lista(&ls);
 
     if (argc < 5){
         printf("Quantidade de parâmetros errada!\n");
@@ -68,7 +65,7 @@ int main(int argc, char const *argv[])
             threadParam * param = malloc(sizeof(threadParam));
             memset(param, 0, sizeof(threadParam));
             param->sock = sock;
-            param->mutex = mutex;
+            param->mutex = &mutex;
 
             pthread_t tid;
             pthread_create(&tid, NULL, HandleThreadTCPClient, param);
@@ -110,7 +107,7 @@ int main(int argc, char const *argv[])
             threadParam * param = malloc(sizeof(threadParam));
             memset(param, 0, sizeof(threadParam));
             param->sock = sock;
-            param->mutex = mutex;
+            param->mutex = &mutex;
 
             pthread_t tid;
             pthread_create(&tid, NULL, HandleThreadTCPClient, param);
@@ -121,8 +118,6 @@ int main(int argc, char const *argv[])
     return 0;
 }
 
-
-
 //------------------//
 // SERVER FUNCTIONS //
 //------------------//
@@ -132,30 +127,10 @@ void * HandleThreadTCPClient(void * param){
     threadParam t_param = *(threadParam *) param;
     free(param);
 
+    int BUFSIZE = sizeof(BlogOperation);
     BlogOperation operation;
     memset(&operation, 0, sizeof(BlogOperation));
 
-    // give user id
-    int BUFSIZE = sizeof(BlogOperation);
-    int numBytesRcvd = recv(t_param.sock, &operation, BUFSIZE, 0);
-    if (numBytesRcvd < 0)
-        DieWithSystemMessage("recv() failed");
-
-    pthread_mutex_lock(&mutex);
-    int freeId = -1;
-    for(int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (ids[i] == 0){
-            freeId = i;
-            break;
-        }
-    }
-
-    ids[freeId] = 1;
-    operation.client_id = freeId;
-    operation.server_response = 1;
-    printf("client %d connected\n", freeId + 1);
-    pthread_mutex_unlock(&mutex);
-    send(t_param.sock, &operation, BUFSIZE, 0);
 
     int isComplete = FALSE;
     while (!isComplete){
@@ -165,14 +140,106 @@ void * HandleThreadTCPClient(void * param){
 
         if (operation.operation_type == DESCONECTAR_SERVIDOR){
             isComplete = TRUE;
-            pthread_mutex_lock(&mutex);
-            ids[operation.client_id] = 0;
-            pthread_mutex_unlock(&mutex);
+
+            pthread_mutex_lock(t_param.mutex);
+
+            // desiscreve cliente de seus tópicos
+            topico* iterator = ls.head;
+            int i = 0;
+            while (iterator != NULL){
+                iterator->inscritos[operation.client_id] = FALSE;
+                iterator = iterator->next;
+            };
+            ids[operation.client_id] = FALSE;
             printf("client %d desconnected\n", operation.client_id + 1);
+            pthread_mutex_unlock(t_param.mutex);
+        }
+        else if(operation.operation_type == NOVA_CONEXAO) {
+            int freeId = -1;
+            pthread_mutex_lock(&mutex);
+            for(int i = 0; i < MAX_CONNECTIONS; i++) {
+                if (ids[i] == 0){
+                    freeId = i;
+                    break;
+                }
+            }
+            ids[freeId] = 1;
+            sockets[freeId] = t_param.sock;
+            pthread_mutex_unlock(&mutex);
+
+            operation.client_id = freeId;
+            operation.server_response = TRUE;
+            printf("client %d connected\n", freeId + 1);
+            send(t_param.sock, &operation, BUFSIZE, 0);
+        }
+        else if(operation.operation_type == NOVO_POST){
+            pthread_mutex_lock(t_param.mutex);
+            topico *tpc = find_topico(&ls, operation.topic);
+
+            // cria topico se não existe ainda
+            if (tpc == NULL){
+                tpc = malloc(sizeof(topico));
+                init_topico(tpc, operation.topic);
+                add_topico_lista(&ls, tpc);
+            }
+
+            // envia para todos os inscritos
+            int clientID = operation.client_id;
+            for (int i = 0; i < MAX_CONNECTIONS; i++){
+                if (tpc->inscritos[i]){
+                    operation.client_id = i;
+                    operation.server_response = TRUE;
+                    ssize_t numBytesSent = send(sockets[i], &operation, BUFSIZE, 0);
+                    if (numBytesSent < 0)
+                        DieWithSystemMessage("send() failed");
+                }
+            }
+
+            operation.client_id = clientID;
+            pthread_mutex_unlock(t_param.mutex);
+            printf("new post added in %s by %d\n", operation.topic, operation.client_id + 1);
+        }
+        else if(operation.operation_type == LISTAGEM_TOPICOS){
+            pthread_mutex_lock(t_param.mutex);
+            topico* iterator = ls.head;
+            int i = 0;
+            while (iterator != NULL){
+                strcpy(&operation.content[i], iterator->name);
+                i += strlen(iterator->name);
+                strcpy(&operation.content[i], "\n");
+                i += 1;
+                iterator = iterator->next;
+            };
+            pthread_mutex_unlock(t_param.mutex);
+
+            operation.server_response = TRUE;
+            ssize_t numBytesSent = send(t_param.sock, &operation, BUFSIZE, 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+
+        }
+        else if(operation.operation_type == INSCRICAO_TOPICO){
+
+            pthread_mutex_lock(t_param.mutex);
+            topico *tpc = find_topico(&ls, operation.topic);
+            if (tpc == NULL){
+                tpc = malloc(sizeof(topico));
+                init_topico(tpc, operation.topic);
+                add_topico_lista(&ls, tpc);
+            }
+            tpc->inscritos[operation.client_id] = 1;
+            pthread_mutex_unlock(t_param.mutex);
+            
+            printf("client %d subscribed to %s\n", operation.client_id + 1, operation.topic);
+        }
+        else if(operation.operation_type == DESINSCRICAO_TOPICO){
+
+            pthread_mutex_lock(t_param.mutex);
+            topico *tpc = find_topico(&ls, operation.topic);
+            if (tpc != NULL)
+                tpc->inscritos[operation.client_id] = 0;
+            pthread_mutex_unlock(t_param.mutex);
+            printf("client %d unsubscribed to %s\n", operation.client_id + 1, operation.topic);
         }
     }
-    
-
-    
-
 }

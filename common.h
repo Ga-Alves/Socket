@@ -27,9 +27,31 @@ struct BlogOperation {
 } typedef BlogOperation;
 
 struct threadParam {
-    pthread_mutex_t mutex;
+    pthread_mutex_t *mutex;
     int sock;
 } typedef threadParam;
+
+struct topico{
+    char name[50];
+    int inscritos[10];
+    struct topico *next;
+} typedef topico;
+
+struct lista{
+    topico *head;
+    topico *tail;
+
+}typedef lista;
+
+// topico methods
+void init_topico(topico* tpc, char name[50]);
+void subscribe_user_on_topico(int userID, topico* tpc);
+void unsubscribe_user_on_topico(int userID, topico* tpc);
+void init_lista(lista* ls);
+
+//lista methods
+void add_topico_lista(lista* ls, topico *tpc);
+topico* find_topico(lista* ls, char topicName[50]);
 
 
 void DieWithUserMessage(const char *msg, const char *detail) ;

@@ -12,6 +12,7 @@
 void HandleTCPServer(int sock);
 int isIPv4(const char *ipAddress);
 int isIPv6(const char *ipAddress);
+void * printServerResponseThread(void * param);
 
 int main(int argc, char const *argv[])
 {
@@ -113,11 +114,13 @@ void HandleTCPServer(int sock){
     if (numBytesSent < 0)
         DieWithSystemMessage("send() failed");
 
-
     //recebe client id
     int numBytesRcvd = recv(sock, &operation, sizeof(BlogOperation), 0);
     if (numBytesRcvd < 0)
         DieWithSystemMessage("recv() failed");
+
+    pthread_t tid;
+    pthread_create(&tid, NULL, printServerResponseThread, &sock);
 
     int isExit = 0;
     while (!isExit){
@@ -129,7 +132,7 @@ void HandleTCPServer(int sock){
         char *first10 = substring(0, 10, inptStr);
         char *first11 = substring(0, 11, inptStr);
 
-        int exit = !strcmp(first4, "exit\0");
+        int exit = !strcmp(first4, "exit");
         int list = !strcmp(first4, "list");
         int subscribe = !strcmp(first9, "subscribe");
         int publish_in = !strcmp(first10, "publish in");
@@ -142,7 +145,7 @@ void HandleTCPServer(int sock){
 
 
         if (exit){
-            printf("comando exit reconhecido!\n");
+            // printf("comando exit reconhecido!\n");
             operation.server_response = FALSE;
             operation.operation_type = DESCONECTAR_SERVIDOR;
 
@@ -153,16 +156,52 @@ void HandleTCPServer(int sock){
             isExit = TRUE;
         }
         else if (list){
-            printf("comando list reconhecido!\n");
+            operation.operation_type = LISTAGEM_TOPICOS;
+            operation.server_response = FALSE;
+            ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
         }
         else if (subscribe){
-            printf("comando subscribe reconhecido!\n");
+            char subscribe[50] = {};
+            char in[50] = {};
+            char topico[50] = {};
+            sscanf(inptStr, "%s %s %s", subscribe, in, topico);
+            strcpy(operation.topic, topico);
+            operation.server_response = FALSE;
+            operation.operation_type = INSCRICAO_TOPICO;
+            ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+
         }
         else if (publish_in){
-            printf("comando publish_in reconhecido!\n");
+            // printf("comando publish_in reconhecido!\n");
+            char publish[50] = {};
+            char in[50] = {};
+            char topico[50] = {};
+            sscanf(inptStr, "%s %s %s", publish, in, topico);
+            strcpy(operation.topic, topico);
+
+            fgets(operation.content, sizeof(operation.content), stdin);
+            operation.server_response = FALSE;
+            operation.operation_type = NOVO_POST;
+            ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
+
         }
         else if (unsubscribe){
-            printf("comando unsubscribe reconhecido!\n");
+            char unsubscribe[50] = {};
+            char topico[50] = {};
+            sscanf(inptStr, "%s %s", unsubscribe, topico);
+
+            strcpy(operation.topic, topico);
+            operation.server_response = FALSE;
+            operation.operation_type = DESINSCRICAO_TOPICO;
+            ssize_t numBytesSent = send(sock, &operation, sizeof(BlogOperation), 0);
+            if (numBytesSent < 0)
+                DieWithSystemMessage("send() failed");
         }
         else{
             printf("COMMAND NOT FOUND\n");
@@ -186,4 +225,19 @@ int isIPv6(const char *ipAddress)
     struct sockaddr_in sa;
     int result = inet_pton(AF_INET6, ipAddress, &(sa.sin_addr));
     return result != 0;
+}
+void * printServerResponseThread(void * param){
+    pthread_detach(pthread_self());
+
+    int sock = *(int*)param;
+    while (TRUE){
+        BlogOperation operation;
+        int numBytesRcvd = recv(sock, &operation, sizeof(BlogOperation), 0);
+        if (numBytesRcvd < 0)
+            DieWithSystemMessage("recv() failed");
+
+        printf("%s", operation.content);
+
+    }
+
 }
