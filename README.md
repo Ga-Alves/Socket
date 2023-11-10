@@ -1,5 +1,5 @@
 # Socket
-configure a TCP/IP socket in C language to play minefield at local network.
+configure a TCP/IP socket in C language to simulate a blog.
 
 
 > To compile
